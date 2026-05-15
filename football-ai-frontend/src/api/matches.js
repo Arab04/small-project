@@ -4,10 +4,14 @@ import { api, unwrap } from './client';
  * Match va o'yinchi API.
  */
 export const matchesApi = {
-  // Barcha o'yinlar
+  // Barcha o'yinlar (paginated response → content array)
   list: async (params = {}) => {
     const res = await api.get('/matches', { params });
-    return unwrap(res);
+    const data = unwrap(res);
+    // Backend PageResponse qaytaradi: { content: [...], totalPages, ... }
+    if (data && Array.isArray(data.content)) return data.content;
+    if (Array.isArray(data)) return data;
+    return [];
   },
 
   // Bitta o'yin

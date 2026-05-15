@@ -28,6 +28,26 @@ export function InsightsSection({ result }) {
     });
   }
 
+  // Comparison — kuchli/zaif tomonlar
+  const comparison = result?.raw_analytics?.comparison || {};
+  const homeName = result?.home_team_name || 'Uy';
+  const awayName = result?.away_team_name || 'Mehmon';
+  if (comparison.team_1?.strengths?.length > 0) {
+    comparison.team_1.strengths.forEach(s => allInsights.push({ text: `${homeName} kuchli: ${s}`, type: 'success' }));
+  }
+  if (comparison.team_2?.strengths?.length > 0) {
+    comparison.team_2.strengths.forEach(s => allInsights.push({ text: `${awayName} kuchli: ${s}`, type: 'success' }));
+  }
+  if (comparison.team_1?.weaknesses?.length > 0) {
+    comparison.team_1.weaknesses.forEach(w => allInsights.push({ text: `${homeName} zaif: ${w}`, type: 'warning' }));
+  }
+  if (comparison.team_2?.weaknesses?.length > 0) {
+    comparison.team_2.weaknesses.forEach(w => allInsights.push({ text: `${awayName} zaif: ${w}`, type: 'warning' }));
+  }
+  if (comparison.narrative) {
+    allInsights.push({ text: comparison.narrative, type: 'info' });
+  }
+
   if (allInsights.length === 0) {
     return null;
   }
