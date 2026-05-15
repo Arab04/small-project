@@ -665,6 +665,11 @@ def _transform_to_frontend_format(raw, job_id, total_frames, w, h, fps=24,
     result['home_team_name'] = 'Team A'
     result['away_team_name'] = 'Team B'
 
+    # ── tactical_analysis: PPDA, transitions, recovery, danger zones, vulnerability, fatigue ──
+    tactical = raw.get('tactical', {})
+    if tactical:
+        result['tactical_analysis'] = tactical
+
     # ── match_phases ────────────────────────────────────────────────
     if duration_min > 20:
         result['match_phases'] = [

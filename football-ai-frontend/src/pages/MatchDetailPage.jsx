@@ -14,6 +14,7 @@ import { HeatmapsSection } from '@/components/match/HeatmapsSection';
 import { InsightsSection, ClaudePromptBar } from '@/components/match/InsightsSection';
 import { AnalysisProgress } from '@/components/match/AnalysisProgress';
 import { AnnotatedVideoSection } from '@/components/match/AnnotatedVideoSection';
+import { TacticalDashboard } from '@/components/match/TacticalDashboard';
 import { phaseLabel, statusLabel, formatRelativeDuration } from '@/lib/utils';
 
 /**
@@ -167,6 +168,7 @@ export function MatchDetailPage() {
           <MomentumChart result={result} />
           <PeriodStaminaSplit result={result} />
           <HeatmapsSection result={result} />
+          <TacticalDashboard result={result} />
           <InsightsSection result={result} />
           <ClaudePromptBar matchId={matchId} />
         </>

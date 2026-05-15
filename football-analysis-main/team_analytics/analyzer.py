@@ -24,6 +24,7 @@ from .heatmap import HeatmapGenerator
 from .pass_network import PassNetworkAnalyzer
 from .pressing import PressingAnalyzer
 from .comparator import TeamComparator
+from .tactical_analyzer import TacticalAnalyzer
 from .reporter import Reporter
 
 
@@ -141,7 +142,20 @@ class MatchAnalyzer:
             high_press_distance_m=self.config.high_press_distance_m,
         ).analyze(players_df, ball_df, metadata)
 
-        # 9. Comparator (config thresholds)
+        # 9. Tactical Analysis (PPDA, transitions, recovery, danger zones, etc.)
+        self._log("6/6 Taktik tahlil (PPDA, transitions, fatigue)...")
+        try:
+            tactical = TacticalAnalyzer()
+            results['tactical'] = tactical.analyze(
+                players_df, ball_df, metadata,
+                pass_data=results.get('passes'),
+                pressing_data=results.get('pressing'),
+            )
+        except Exception as e:
+            self._log(f"WARNING: Taktik tahlil xatosi: {e}")
+            results['tactical'] = {}
+
+        # 10. Comparator (config thresholds)
         self._log("Kuchli/zaif tomonlarni aniqlash...")
         comp = TeamComparator()
         comp.THRESHOLDS = {

@@ -20,5 +20,6 @@ Yoki maxsus config bilan:
 from .analyzer import MatchAnalyzer
 from .video_overlay import AnalyticsOverlay
 from .config import AnalyticsConfig, PRESETS
+from .tactical_analyzer import TacticalAnalyzer
 
-__all__ = ['MatchAnalyzer', 'AnalyticsOverlay', 'AnalyticsConfig', 'PRESETS']
+__all__ = ['MatchAnalyzer', 'AnalyticsOverlay', 'AnalyticsConfig', 'PRESETS', 'TacticalAnalyzer']
