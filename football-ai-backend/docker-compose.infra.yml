@@ -1,0 +1,78 @@
+version: '3.8'
+
+# ============================================================
+# Faqat infrastruktura (PostgreSQL + Redis + MinIO).
+# Backend va Frontend localda (IDE'da) ishga tushiriladi.
+#
+# Ishga tushirish:
+#   docker compose -f docker-compose.infra.yml up -d
+# ============================================================
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: football-ai-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-football_ai}
+      POSTGRES_USER: ${DB_USERNAME:-football_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-football_secret_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-football_admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: football-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: football-ai-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    ports:
+      - "9100:9000"   # S3 API
+      - "9101:9001"   # Console
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: football-ai-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123};
+      mc mb -p local/football-videos || true;
+      mc mb -p local/football-reports || true;
+      mc mb -p local/football-images || true;
+      mc anonymous set download local/football-videos;
+      echo '✓ MinIO buckets tayyor';
+      "
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

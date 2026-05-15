@@ -1,0 +1,199 @@
+version: '3.8'
+
+# ============================================================
+# Football AI — Production stack (CPU server 31.184.242.73)
+# ============================================================
+# Quyidagi servislar:
+#   - postgres   (DB)             — internal only (5432)
+#   - redis      (cache/queue)    — internal only (6379)
+#   - minio      (S3 storage)     — 9100 (API) + 9101 (Console)
+#   - backend    (Spring Boot)    — 8060
+#   - frontend   (nginx + React)  — 8069
+#
+# ML service RunPod'da alohida turadi.
+# Ishga tushirish:   docker compose up -d --build
+# Loglarni ko'rish:  docker compose logs -f backend
+# ============================================================
+
+services:
+
+  # ---------- PostgreSQL ----------
+  postgres:
+    image: postgres:16-alpine
+    container_name: football-ai-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-football_ai}
+      POSTGRES_USER: ${DB_USERNAME:-football_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-football_secret_2026}
+    # Docker tarmog'i ichida — tashqaridan ochilmaydi
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - football-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-football_admin} -d ${DB_NAME:-football_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Redis ----------
+  redis:
+    image: redis:7-alpine
+    container_name: football-ai-redis
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - football-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- MinIO (S3-compatible object storage) ----------
+  minio:
+    image: minio/minio:latest
+    container_name: football-ai-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    ports:
+      - "9100:9000"   # S3 API — tashqaridan RunPod ham ulanadi
+      - "9101:9001"   # Web Console
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    networks:
+      - football-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------- MinIO bucket initializer (bir martalik) ----------
+  minio-init:
+    image: minio/mc:latest
+    container_name: football-ai-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123};
+      mc mb -p local/football-videos || true;
+      mc mb -p local/football-reports || true;
+      mc mb -p local/football-images || true;
+      mc anonymous set download local/football-videos;
+      mc anonymous set download local/football-reports;
+      mc anonymous set download local/football-images;
+      echo '✓ MinIO buckets tayyor';
+      "
+    networks:
+      - football-net
+
+  # ---------- Spring Boot Backend ----------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: football-ai-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8060:8060"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-football_ai}
+      DB_USERNAME: ${DB_USERNAME:-football_admin}
+      DB_PASSWORD: ${DB_PASSWORD:-football_secret_2026}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+
+      # MinIO — backend internal Docker tarmog'idan kiradi (minio:9000)
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+
+      # AI
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-meta-llama/llama-3.1-8b-instruct:free}
+
+      # ML Service (RunPod proxy URL)
+      ML_SERVICE_URL: ${ML_SERVICE_URL}
+      ML_INTERNAL_TOKEN: ${ML_INTERNAL_TOKEN}
+
+      # CORS & ML callback
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS}
+      APP_ML_CALLBACK_URL: ${APP_ML_CALLBACK_URL}
+
+      # RunPod auto start/stop
+      RUNPOD_ENABLED: ${RUNPOD_ENABLED:-false}
+      RUNPOD_API_KEY: ${RUNPOD_API_KEY:-}
+      RUNPOD_POD_ID: ${RUNPOD_POD_ID:-}
+      RUNPOD_IDLE_MINUTES: ${RUNPOD_IDLE_MINUTES:-10}
+      RUNPOD_START_TIMEOUT: ${RUNPOD_START_TIMEOUT:-180}
+
+      # JVM options
+      JAVA_OPTS: "-Xms512m -Xmx2g -XX:+UseG1GC"
+    volumes:
+      - backend_logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - football-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8060/api/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s   # Spring Boot ishga tushishi vaqt oladi
+
+  # ---------- Frontend (nginx + React build) ----------
+  frontend:
+    build:
+      context: ../football-ai-frontend
+      dockerfile: Dockerfile
+      args:
+        # Build vaqtida Vite ga beriladi
+        VITE_API_URL: http://31.184.242.73:8060
+    container_name: football-ai-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8069:80"
+    restart: unless-stopped
+    networks:
+      - football-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  backend_logs:
+
+networks:
+  football-net:
+    driver: bridge

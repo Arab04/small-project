@@ -1,0 +1,39 @@
+# ============================================================
+# Production profile (active when SPRING_PROFILES_ACTIVE=prod)
+# Bu fayl application.yml'ning ustiga yoziladi.
+# ============================================================
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update    # Prodakshenda Flyway ishlatish tavsiya etiladi
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+# Logging - prodakshenda DEBUG yopiq
+logging:
+  level:
+    root: INFO
+    uz.footballai: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+  file:
+    name: /app/logs/football-ai.log
+
+# Swagger - prodakshenda yopib qo'yish ham mumkin (xohlasangiz)
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true   # Production'da false qiling agar kerakmas bo'lsa
+
+# Health endpoint - prodakshenda batafsil tafsilotni faqat authorized'larga ko'rsatish
+management:
+  endpoint:
+    health:
+      show-details: never

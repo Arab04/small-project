@@ -1,0 +1,145 @@
+server:
+  port: 8060
+  servlet:
+    context-path: /api
+  tomcat:
+    max-swallow-size: -1     # request body chegarasini olib tashlash
+    max-http-form-post-size: -1
+    connection-timeout: 120000   # 2 daqiqa
+    threads:
+      max: 50
+
+spring:
+  application:
+    name: football-ai
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:football_ai}
+    username: ${DB_USERNAME:football_admin}
+    password: ${DB_PASSWORD:football_secret_2026}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 300000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: public
+    open-in-view: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000
+
+  servlet:
+    multipart:
+      max-file-size: 3GB
+      max-request-size: 3GB
+      file-size-threshold: 100MB    # disk'ga 100MB+ failarni yozish (RAM tejash)
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# JWT Configuration
+# JWT secret - kamida 32 bayt (256 bit) bo'lishi kerak HS256 algoritmi uchun
+# Prodakshenda har doim env'dan o'qib oling: export JWT_SECRET=...
+jwt:
+  secret: ${JWT_SECRET:cGxlYXNlLWNoYW5nZS10aGlzLXNlY3JldC1pbi1wcm9kdWN0aW9uLWl0LW11c3QtYmUtYXQtbGVhc3QtMzItYnl0ZXMtbG9uZw==}
+  access-token-expiration: 86400000    # 24 hours
+  refresh-token-expiration: 604800000  # 7 days
+
+# MinIO Configuration
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  bucket:
+    video: football-videos
+    report: football-reports
+    image: football-images
+
+# Claude AI Configuration
+claude:
+  api-key: ${CLAUDE_API_KEY:your-claude-api-key-here}
+  api-url: https://api.anthropic.com/v1/messages
+  model: claude-sonnet-4-20250514
+  max-tokens: 8192
+  timeout: 120
+
+# OpenRouter AI Configuration (ixtiyoriy - bepul Llama/Gemma modellari uchun)
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  model: ${OPENROUTER_MODEL:meta-llama/llama-3.1-8b-instruct:free}
+  app-name: Football AI Analyzer
+  app-url: http://localhost:8060
+
+# ML Service (Python video tahlil — RunPod'da)
+ml-service:
+  url: ${ML_SERVICE_URL:http://localhost:8000}
+  timeout: 600
+  internal-token: ${ML_INTERNAL_TOKEN:internal-secret-token-change-me}
+  long-form-timeout: 3600          # 1 soat
+  long-form-threshold-minutes: 30
+
+# Application-level (CORS, callback URL)
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
+  ml-callback-url: ${APP_ML_CALLBACK_URL:http://backend:8060/api/internal/ml-callback}
+
+# RunPod GPU pod auto-start/stop (cost optimization)
+# Pod faqat tahlil chaqirilganda ishga tushadi, idle bo'lsa avtomatik to'xtaydi.
+# Stop holatda GPU uchun pul ketmaydi (faqat storage uchun ~$0.10/soat).
+runpod:
+  enabled: ${RUNPOD_ENABLED:false}                      # true → auto-start/stop yoqilgan
+  api-key: ${RUNPOD_API_KEY:}                           # https://www.runpod.io/console/user/settings
+  pod-id: ${RUNPOD_POD_ID:}                             # RunPod console'dan oling
+  idle-timeout-minutes: ${RUNPOD_IDLE_MINUTES:10}       # idle bo'lsa shuncha vaqt'dan keyin stop
+  start-timeout-seconds: ${RUNPOD_START_TIMEOUT:180}    # cold start uchun max kutish
+  health-check-interval-seconds: 5                       # /health pollerni necha soniyada
+
+# Springdoc OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Actuator (healthcheck uchun)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: false   # Redis ishlatilmasa false qoldiring
+
+# Logging
+logging:
+  level:
+    uz.footballai: DEBUG
+    org.hibernate.SQL: WARN
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

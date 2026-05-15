@@ -1,0 +1,30 @@
+# Models (large files)
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Output
+output_videos/
+input_videos/
+*.mp4
+*.avi
+
+# Environment
+.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
