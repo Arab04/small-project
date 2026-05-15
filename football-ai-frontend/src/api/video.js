@@ -103,6 +103,16 @@ export const storageApi = {
     if (!minioKey) return null;
     return `/api/storage/image?key=${encodeURIComponent(minioKey)}`;
   },
+
+  getVideoUrl: (minioKey) => {
+    if (!minioKey) return null;
+    return `/api/storage/video?key=${encodeURIComponent(minioKey)}`;
+  },
+
+  getVideoDownloadUrl: (minioKey) => {
+    if (!minioKey) return null;
+    return `/api/storage/video/download?key=${encodeURIComponent(minioKey)}`;
+  },
 };
 
 /**

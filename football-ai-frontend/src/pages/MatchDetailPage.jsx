@@ -13,6 +13,7 @@ import { PeriodStaminaSplit } from '@/components/match/PeriodStaminaSplit';
 import { HeatmapsSection } from '@/components/match/HeatmapsSection';
 import { InsightsSection, ClaudePromptBar } from '@/components/match/InsightsSection';
 import { AnalysisProgress } from '@/components/match/AnalysisProgress';
+import { AnnotatedVideoSection } from '@/components/match/AnnotatedVideoSection';
 import { phaseLabel, statusLabel, formatRelativeDuration } from '@/lib/utils';
 
 /**
@@ -161,6 +162,7 @@ export function MatchDetailPage() {
       {/* Full dashboard */}
       {isCompleted && (
         <>
+          <AnnotatedVideoSection result={result} />
           <MetricsRow result={result} />
           <MomentumChart result={result} />
           <PeriodStaminaSplit result={result} />

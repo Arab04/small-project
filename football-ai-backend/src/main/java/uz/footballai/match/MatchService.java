@@ -16,6 +16,8 @@ import uz.footballai.team.Team;
 import uz.footballai.team.TeamService;
 import uz.footballai.user.User;
 import uz.footballai.user.UserService;
+import uz.footballai.video.VideoAnalysisJobRepository;
+import uz.footballai.video.VideoJobStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,7 @@ public class MatchService {
     private final MatchRepository matchRepository;
     private final MatchEventRepository matchEventRepository;
     private final MatchStatsRepository matchStatsRepository;
+    private final VideoAnalysisJobRepository videoAnalysisJobRepository;
     private final UserService userService;
     private final TeamService teamService;
     private final OpponentService opponentService;
@@ -313,6 +316,10 @@ public class MatchService {
                 .notes(match.getNotes())
                 .eventCount((int) matchEventRepository.countByMatchIdAndDeletedFalse(match.getId()))
                 .hasStats(matchStatsRepository.existsByMatchId(match.getId()))
+                .videoUploaded(match.getVideoUrl() != null && !match.getVideoUrl().isBlank())
+                .analyzed(videoAnalysisJobRepository
+                        .findFirstByMatchIdAndStatusOrderByCreatedAtDesc(match.getId(), VideoJobStatus.COMPLETED)
+                        .isPresent())
                 .build();
     }
 }

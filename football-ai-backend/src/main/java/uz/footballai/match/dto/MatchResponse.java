@@ -35,4 +35,10 @@ public class MatchResponse {
     private String notes;
     private int eventCount;
     private boolean hasStats;
+
+    /** Video yuklangan (MinIO'da videoUrl mavjud) */
+    private boolean videoUploaded;
+
+    /** Kamida bitta COMPLETED tahlil job bor */
+    private boolean analyzed;
 }
